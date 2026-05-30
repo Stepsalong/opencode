@@ -20,14 +20,11 @@ jobs:
       - name: Install deps
         run: bun install
 
-      - name: Build CLI
-        run: cd packages/opencode && bun run build
-
-      - name: Show built files
-        run: find packages/opencode/dist -type f -executable 2>/dev/null || find packages/opencode/dist -name "opencode" 2>/dev/null || echo "checking bin..." && ls -la packages/opencode/bin/
+      - name: Build CLI (baseline — no AVX2)
+        run: cd packages/opencode && bun run build -- --baseline
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: opencode-linux-x64
-          path: packages/opencode/dist/opencode-linux-x64/bin/opencode
+          name: opencode-linux-x64-baseline
+          path: packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode
