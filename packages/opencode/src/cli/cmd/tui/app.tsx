@@ -123,6 +123,7 @@ const appBindingCommands = [
   "terminal.title.toggle",
   "app.toggle.animations",
   "app.toggle.file_context",
+  "permission.auto_accept.toggle",
   "app.toggle.diffwrap",
   "app.toggle.paste_summary",
   "app.toggle.session_directory_filter",
@@ -450,6 +451,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const [pasteSummaryEnabled, setPasteSummaryEnabled] = createSignal(
     kv.get("paste_summary_enabled", !sync.data.config.experimental?.disable_paste_summary),
   )
+  const [autoaccept, setAutoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
 
   // Update terminal window title based on current route and session
   createEffect(() => {
@@ -891,6 +893,15 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         category: "System",
         run: () => {
           kv.set("file_context_enabled", !kv.get("file_context_enabled", true))
+          dialog.clear()
+        },
+      },
+      {
+        name: "permission.auto_accept.toggle",
+        title: autoaccept() === "none" ? "Enable autoedit" : "Disable autoedit",
+        category: "System",
+        run: () => {
+          setAutoaccept(() => (autoaccept() === "none" ? "edit" : "none"))
           dialog.clear()
         },
       },
