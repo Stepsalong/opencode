@@ -23,8 +23,11 @@ jobs:
       - name: Build CLI
         run: cd packages/opencode && bun run build
 
+      - name: Show built files
+        run: find packages/opencode/dist -type f -executable 2>/dev/null || find packages/opencode/dist -name "opencode" 2>/dev/null || echo "checking bin..." && ls -la packages/opencode/bin/
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: opencode-linux-x64
-          path: packages/opencode/bin/opencode
+          path: packages/opencode/dist/opencode-linux-x64/bin/opencode
