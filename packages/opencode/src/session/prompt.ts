@@ -1270,11 +1270,19 @@ export const layer = Layer.effect(
               (part) => part.type === "tool" && !part.metadata?.providerExecuted && !isOrphanedInterruptedTool(part),
             ) ?? false
 
+          // Find the last non-synthetic user message. Synthetic user messages
+          // (compaction, subtask continuation) can have IDs higher than the
+          // last assistant, which blocks the break condition and causes the
+          // loop to re-enter with another LLM call in web/serve mode (#26365).
+          const lastRealUser = msgs.findLast(
+            (msg) => msg.info.role === "user" && !msg.parts.every((p) => "synthetic" in p && p.synthetic),
+          )
+
           if (
             lastAssistant?.finish &&
             !["tool-calls"].includes(lastAssistant.finish) &&
             !hasToolCalls &&
-            lastUser.id < lastAssistant.id
+            lastRealUser && lastRealUser.info.id < lastAssistant.id
           ) {
             const orphan = lastAssistantMsg?.parts.find(
               (part): part is MessageV2.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
@@ -1471,6 +1479,22 @@ export const layer = Layer.effect(
                 yield* sessions.updateMessage(handle.message)
                 return "break" as const
               }
+              // When the model finishes cleanly with no pending tool parts, break
+              // immediately. Prevents auto-compaction from creating a synthetic
+              // user message with a higher ID that blocks the top-of-loop break
+              // condition, causing indefinite looping in web/serve mode (#26365).
+              const match = yield* sessions.findMessage(
+                sessionID,
+                (m) => m.info.role === "assistant" && m.info.id === handle.message.id,
+              )
+              const hasPending = Option.match(match, {
+                onNone: () => false,
+                onSome: (msg) =>
+                  msg.parts.some(
+                    (part) => part.type === "tool" && !part.metadata?.providerExecuted && !isOrphanedInterruptedTool(part),
+                  ),
+              })
+              if (!hasPending) return "break" as const
             }
 
             if (result === "stop") return "break" as const
